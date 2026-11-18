@@ -11,21 +11,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Download source code from GitHub
       - name: Checkout source code
         uses: actions/checkout@v4
 
-      - name: List project files
-        run: ls -la
-
+      # Step 2: Install Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
+      # Step 3: Install application and testing dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
+          python -m pip install -r requirements-dev.txt
 
-      - name: Welcome message
-        run: echo "Starting Inventory Management CI Pipeline"
+      # Step 4: Execute automated tests
+      - name: Run automated tests
+        run: python -m pytest -v
+
+      # Step 5: Display success message
+      - name: CI success message
+        run: echo "Inventory Management CI Pipeline completed successfully"
+
