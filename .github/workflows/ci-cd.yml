@@ -13,5 +13,8 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v4
 
+      - name: List project files
+        run: ls -la
+
       - name: Welcome message
         run: echo "Starting Inventory Management CI Pipeline"
