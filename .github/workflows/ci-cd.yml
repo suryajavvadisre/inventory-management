@@ -1,0 +1,14 @@
+name: Inventory Management CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Welcome message
+        run: echo "Starting Inventory Management CI Pipeline"
