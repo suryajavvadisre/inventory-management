@@ -35,3 +35,66 @@ jobs:
       - name: CI success message
         run: echo "Inventory Management CI Pipeline completed successfully"
 
+  # CD job: Deploy application to EC2
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Configure SSH authentication
+      - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_KNOWN_HOSTS: ${{ secrets.EC2_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/inventory_deploy
+          chmod 600 ~/.ssh/inventory_deploy
+
+          printf '%s\n' "$EC2_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      # Step 2: Connect to EC2 and deploy
+      - name: Deploy application to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i ~/.ssh/inventory_deploy \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$EC2_USER@$EC2_HOST" <<'EOF'
+
+            set -e
+
+            cd /home/ec2-user/inventory-management
+
+            echo "Pulling latest application code..."
+            git pull --ff-only origin main
+
+            echo "Installing production dependencies..."
+            /home/ec2-user/inventory-management/venv/bin/python -m pip install -r requirements.txt
+
+            echo "Restarting FastAPI service..."
+            sudo -n systemctl restart inventory-api.service
+
+            echo "Checking service status..."
+            sudo -n systemctl is-active --quiet inventory-api.service
+
+            echo "Checking application health..."
+            for attempt in $(seq 1 10); do
+              if curl --fail --silent http://127.0.0.1:8000/ >/dev/null; then
+                echo "Health check passed!"
+                exit 0
+              fi
+
+              echo "Waiting for application to become ready..."
+              sleep 3
+            done
+
+            echo "Health check failed!"
+            exit 1
+
+          EOF
